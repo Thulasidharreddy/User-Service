@@ -46,11 +46,7 @@ public class UserController {
     public ResponseEntity<UserDetails> fetchUserById(@PathVariable("id") Long userId) {
         try {
             UserDetails userDetails = userService.fetchUserById(userId);
-            if (userDetails != null) {
-                return new ResponseEntity<>(userDetails, HttpStatus.OK);
-            } else {
-                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-            }
+            return new ResponseEntity<>(userDetails, HttpStatus.OK);
         } catch (Exception ex) {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
