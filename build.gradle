@@ -1,0 +1,113 @@
+buildscript {
+	dependencies {
+		classpath 'org.flywaydb:flyway-mysql:9.8.1'
+	}
+}
+
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.3.4'
+	id 'io.spring.dependency-management' version '1.1.6'
+	id 'org.flywaydb.flyway' version '9.8.1' // Updated Flyway version
+	id 'nu.studer.jooq' version '8.1' // Keep the current version
+}
+
+group = 'com.neurasim'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(19)
+	}
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+	mavenLocal()
+}
+
+dependencies {
+	jooqGenerator "jakarta.xml.bind:jakarta.xml.bind-api:3.0.1"
+	jooqGenerator "com.mysql:mysql-connector-j:8.0.32"
+	implementation group: 'org.jooq', name: 'jooq-codegen', version: '3.17.5'
+	implementation 'org.springframework.boot:spring-boot-starter-jooq'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+	implementation 'org.projectlombok:lombok'
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+	runtimeOnly 'com.mysql:mysql-connector-j'
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+flyway {
+	url = 'jdbc:mysql://localhost:3306/user_task_management'
+	user = 'root'
+	password = 'neurasim'
+}
+
+jooq {
+	configurations {
+		main {
+			generationTool {
+				logging = org.jooq.meta.jaxb.Logging.INFO
+				jdbc {
+					driver = 'com.mysql.cj.jdbc.Driver'
+					url = 'jdbc:mysql://localhost:3306/user_task_management'
+					user = 'root'
+					password = 'neurasim'
+				}
+				generator {
+					name = 'org.jooq.codegen.DefaultGenerator'
+					database {
+						name = 'org.jooq.meta.mysql.MySQLDatabase'
+						includes = '.*'  // Match all tables
+						excludes = '''
+                        flyway_schema_history
+                        '''
+					}
+					generate {
+						deprecated = false
+						records = true
+						immutablePojos = true
+						fluentSetters = true
+						pojos = true
+						pojosEqualsAndHashCode = true
+					}
+					target {
+						packageName = 'com.neurasim.jooq'
+						directory = 'src/jooqgenerated/jooq'
+					}
+					strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
+				}
+			}
+		}
+	}
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
+tasks.named('generateJooq').configure {
+	// Ensure database schema has been prepared by Flyway before generating the jOOQ sources
+	dependsOn tasks.named('flywayMigrate')
+
+	// Declare Flyway migration scripts as inputs on the jOOQ task
+	inputs.files(fileTree('src/main/resources/db/migration'))
+			.withPropertyName('migrations')
+			.withPathSensitivity(PathSensitivity.RELATIVE)
+
+	// Make jOOQ task participate in incremental builds (and build caching)
+	allInputsDeclared = true
+}
