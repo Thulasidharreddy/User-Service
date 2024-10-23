@@ -2,6 +2,7 @@ package com.neurasim.usermanagementservice.repository.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neurasim.jooq.user_task_management.Tables;
+import com.neurasim.jooq.user_task_management.tables.records.UserRecord;
 import com.neurasim.usermanagementservice.model.UserDetails;
 import com.neurasim.usermanagementservice.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -59,17 +60,19 @@ public class UserRepositoryImpl implements UserRepository {
     @Override
     public UserDetails fetchUserById(Long userId) {
          try {
-             return Objects.requireNonNull(dslContext.selectFrom(Tables.USER)
-                             .where(Tables.USER.ID.eq(userId))
-                             .fetchOne())
-                     .map(record -> {
-                         UserDetails user = new UserDetails();
-                         user.setId(record.get(USER.ID));
-                         user.setName(record.get(USER.NAME));
-                         user.setEmail(record.get(USER.EMAIL));
-                         user.setCreatedAt(record.get(USER.CREATEDAT));
-                         return user;
-                     });
+             UserRecord userRecord = dslContext.selectFrom(Tables.USER)
+                     .where(Tables.USER.ID.eq(userId))
+                     .fetchOne();
+             if (userRecord == null) {
+                 return null;
+             } else {
+                 UserDetails user = new UserDetails();
+                 user.setId(userRecord.get(USER.ID));
+                 user.setName(userRecord.get(USER.NAME));
+                 user.setEmail(userRecord.get(USER.EMAIL));
+                 user.setCreatedAt(userRecord.get(USER.CREATEDAT));
+                 return user;
+             }
          } catch (Exception ex) {
              System.out.printf("Exception occurred while fetching user by ID from DB. UserId: %s, Time: %s", userId, fetchLocalDateTime());
              throw new RuntimeException(ex);
